@@ -1,14 +1,15 @@
 // ─── SERVICE WORKER — Moi App ───────────────────────────────
-// Tourne en arrière-plan, vérifie les rappels et envoie les SMS
-
 const SMS_BASE = 'https://smsapi.free-mobile.fr/sendmsg';
 const SMS_USER = '39023030';
 const SMS_PASS = '49aavAblDPIaTP';
-const CACHE_NAME = 'moi-v1';
-const CHECK_INTERVAL = 30000; // 30 secondes
+const CACHE_NAME = 'moi-v2';
+const BASE = '/SMS/';
 
-// Fichiers à mettre en cache pour fonctionner hors-ligne
-const CACHE_FILES = ['/', '/index.html', '/manifest.json'];
+const CACHE_FILES = [
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.json'
+];
 
 // ─── INSTALL ────────────────────────────────────────────────
 self.addEventListener('install', e => {
@@ -22,33 +23,31 @@ self.addEventListener('install', e => {
 // ─── ACTIVATE ───────────────────────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// ─── FETCH (cache first pour les assets) ────────────────────
+// ─── FETCH ──────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
-  // Ne pas intercepter les appels SMS
   if (e.request.url.includes('smsapi.free-mobile.fr')) return;
-
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
 });
 
-// ─── RAPPELS PLANIFIÉS (stockés en mémoire SW) ──────────────
+// ─── RAPPELS EN ARRIÈRE-PLAN ────────────────────────────────
 let scheduledReminders = [];
 let checkTimer = null;
 
-function startCheckLoop() {
-  if (checkTimer) return; // déjà lancé
-  checkTimer = setInterval(checkReminders, CHECK_INTERVAL);
-  checkReminders(); // vérification immédiate
+function startLoop() {
+  if (checkTimer) return;
+  checkTimer = setInterval(checkReminders, 30000);
+  checkReminders();
 }
 
-function stopCheckLoop() {
+function stopLoop() {
   if (scheduledReminders.length === 0 && checkTimer) {
     clearInterval(checkTimer);
     checkTimer = null;
@@ -57,84 +56,63 @@ function stopCheckLoop() {
 
 async function checkReminders() {
   const now = Date.now();
-  const toFire = scheduledReminders.filter(r => new Date(r.dt).getTime() <= now);
-  const remaining = scheduledReminders.filter(r => new Date(r.dt).getTime() > now);
-  scheduledReminders = remaining;
-
-  for (const r of toFire) {
-    await fireReminder(r);
-  }
-
-  stopCheckLoop();
+  const toFire   = scheduledReminders.filter(r => new Date(r.dt).getTime() <= now);
+  scheduledReminders = scheduledReminders.filter(r => new Date(r.dt).getTime() > now);
+  for (const r of toFire) await fireReminder(r);
+  stopLoop();
 }
 
 async function fireReminder(r) {
-  // 1) Notification push (visible même app fermée)
+  // Notification push
   try {
     await self.registration.showNotification('⏰ Rappel — Moi', {
       body: r.title,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
       tag: 'reminder-' + r.id,
       requireInteraction: true,
       data: { id: r.id }
     });
-  } catch (e) {
-    console.warn('Notification SW échouée:', e);
-  }
+  } catch(e) {}
 
-  // 2) Envoi SMS via Free Mobile
-  const smsText = encodeURIComponent('⏰ Rappel : ' + r.title);
-  const smsUrl = `${SMS_BASE}?user=${SMS_USER}&pass=${encodeURIComponent(SMS_PASS)}&msg=${smsText}`;
-
+  // SMS
   let smsSent = false;
   try {
-    await fetch(smsUrl, { mode: 'no-cors' });
+    const url = `${SMS_BASE}?user=${SMS_USER}&pass=${encodeURIComponent(SMS_PASS)}&msg=${encodeURIComponent('⏰ Rappel : ' + r.title)}`;
+    await fetch(url, { mode: 'no-cors' });
     smsSent = true;
-  } catch (e) {
-    console.warn('SMS SW échoué:', e);
-  }
+  } catch(e) {}
 
-  // 3) Informer tous les onglets ouverts
+  // Informer l'app si elle est ouverte
   const clients = await self.clients.matchAll({ includeUncontrolled: true });
-  clients.forEach(client => {
-    client.postMessage({ type: 'REMINDER_FIRED', id: r.id, smsSent });
-  });
+  clients.forEach(c => c.postMessage({ type: 'REMINDER_FIRED', id: r.id, smsSent }));
 }
 
 // ─── MESSAGES DEPUIS L'APP ──────────────────────────────────
 self.addEventListener('message', e => {
-  const { type, reminder } = e.data || {};
+  const { type } = e.data || {};
 
-  if (type === 'SCHEDULE_REMINDER' && reminder) {
-    // Dédoublonnage
-    scheduledReminders = scheduledReminders.filter(r => r.id !== reminder.id);
-    scheduledReminders.push(reminder);
-    startCheckLoop();
-    e.source && e.source.postMessage({ type: 'SCHEDULED_OK', id: reminder.id });
+  if (type === 'SCHEDULE_REMINDER') {
+    scheduledReminders = scheduledReminders.filter(r => r.id !== e.data.reminder.id);
+    scheduledReminders.push(e.data.reminder);
+    startLoop();
   }
 
-  if (type === 'CANCEL_REMINDER' && e.data.id) {
+  if (type === 'CANCEL_REMINDER') {
     scheduledReminders = scheduledReminders.filter(r => r.id !== e.data.id);
-    stopCheckLoop();
+    stopLoop();
   }
 
   if (type === 'PING') {
-    // Permet à l'app de vérifier que le SW est vivant
     e.source && e.source.postMessage({ type: 'PONG', count: scheduledReminders.length });
   }
 });
 
-// ─── CLIC SUR NOTIFICATION ──────────────────────────────────
+// ─── CLIC NOTIFICATION ──────────────────────────────────────
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
     self.clients.matchAll({ type: 'window' }).then(clients => {
-      if (clients.length > 0) {
-        clients[0].focus();
-      } else {
-        self.clients.openWindow('/');
-      }
+      if (clients.length > 0) return clients[0].focus();
+      return self.clients.openWindow(BASE);
     })
   );
 });
