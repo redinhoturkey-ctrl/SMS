@@ -562,6 +562,35 @@ async function loadReminders(){
   }catch(e){setGhStatus(false,'Erreur GitHub');}
 }
 async function saveReminders(){if(!ghToken)return;const{sha}=await ghGet();await ghPut(S.reminders||[],sha);}
+
+// Déclenche le workflow GitHub Actions via l'API (workflow_dispatch)
+async function triggerWorkflow(){
+  if(!ghToken)return;
+  try{
+    const res=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/check-reminders.yml/dispatches`,{
+      method:'POST',
+      headers:{Authorization:'token '+ghToken,Accept:'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({ref:'main'})
+    });
+    console.log('Workflow déclenché :', res.status);
+  }catch(e){console.warn('triggerWorkflow échoué:',e);}
+}
+
+// Planifie le déclenchement du workflow au moment exact du rappel
+const scheduledTriggers = {};
+function scheduleReminderTrigger(r){
+  if(scheduledTriggers[r.id])return; // déjà planifié
+  const delay = new Date(r.dt).getTime() - Date.now();
+  if(delay<=0||delay>24*60*60*1000)return; // passé ou > 24h (trop loin pour setTimeout)
+  console.log(`⏱ Trigger planifié dans ${Math.round(delay/1000)}s pour "${r.title}"`);
+  scheduledTriggers[r.id] = setTimeout(async ()=>{
+    console.log(`🚀 Déclenchement workflow pour "${r.title}"`);
+    await triggerWorkflow();
+    // Retenter 90s plus tard au cas où le 1er job rate
+    setTimeout(triggerWorkflow, 90000);
+    delete scheduledTriggers[r.id];
+  }, delay);
+}
 function saveConfig(){
   const t=document.getElementById('cfgToken').value.trim();
   if(!t){toast('Entre un token');return;}
@@ -704,7 +733,12 @@ async function addReminder(){
   const r={id:Date.now(),title,dt:date+'T'+time,done:false,smsSent:false};
   if(!S.reminders)S.reminders=[];
   S.reminders.push(r);save();closeR();renderReminders();toast('⏳ Sauvegarde…');
-  try{await saveReminders();toast('✅ Rappel enregistré !');showBanner('info','🤖 SMS automatique prévu');}
+  try{
+    await saveReminders();
+    scheduleReminderTrigger(r);
+    toast('✅ Rappel enregistré !');
+    showBanner('info','🤖 SMS automatique prévu');
+  }
   catch(e){toast('⚠️ Sauvegardé en local seulement');}
 }
 function renderReminders(){
@@ -860,6 +894,12 @@ function delLink(id){S.links=S.links.filter(x=>x.id!==id);save();renderLinks();}
 
 // ── INIT ───────────────────────────────────
 renderMsgs();renderReminders();renderLists();renderLinks();
+
+// Planifier les triggers pour les rappels en attente (dans les 24h)
+if(S.reminders){
+  S.reminders.filter(r=>!r.done&&!r.smsSent&&new Date(r.dt)>new Date())
+             .forEach(scheduleReminderTrigger);
+}
 </script>
 </body>
 </html>
