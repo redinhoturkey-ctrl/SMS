@@ -108,9 +108,9 @@ html,body{height:100%;width:100%;font-family:var(--font-body);background:var(--b
 .mrow.selected .msg-check svg{display:block;}
 .msg-check svg{display:none;fill:white;width:12px;height:12px;}
 
-.bubble{max-width:78%;padding:10px 15px;border-radius:22px;font-size:15px;line-height:1.5;word-break:break-word;font-family:var(--font-body);}
+.bubble{width:92%;padding:10px 15px;border-radius:22px;font-size:15px;line-height:1.5;word-break:break-word;font-family:var(--font-body);}
 .mrow.out .bubble{background:var(--grad);color:#fff;border-bottom-right-radius:5px;box-shadow:0 4px 12px rgba(1,132,250,.3);}
-.bubble-img{max-width:78%;border-radius:18px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.bubble-img{width:92%;border-radius:18px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.15);}
 .bubble-img img{width:100%;display:block;max-height:260px;object-fit:cover;}
 .mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 4px;}
 
@@ -217,6 +217,10 @@ html,body{height:100%;width:100%;font-family:var(--font-body);background:var(--b
 .lkinfo{flex:1;min-width:0;}
 .lktitle{font-size:14px;font-weight:600;font-family:var(--font);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .lkurl{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.lk-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.lk-edit{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;display:flex;align-items:center;}
+.lk-edit svg{width:17px;height:17px;stroke:var(--accent);fill:none;}
+.lk-edit:active svg{stroke:var(--accent);}
 .lk-del{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;flex-shrink:0;}
 .lk-del:active{color:var(--red);}
 
@@ -499,6 +503,21 @@ html,body{height:100%;width:100%;font-family:var(--font-body);background:var(--b
       <input type="text" class="finput" id="lkTitle" placeholder="Nom du lien">
       <button class="sbtn sbtn-ok" onclick="addLink()">Sauvegarder</button>
       <button class="sbtn sbtn-no" onclick="closeLk()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ÉDITION LIEN -->
+<div class="overlay" id="lkEditModal" onclick="if(event.target===this)closeLkEdit()">
+  <div class="sheet"><div class="handle"></div><div class="stitle">Modifier le lien</div>
+    <div class="sbody">
+      <div class="flbl">URL</div>
+      <input type="text" class="finput" id="lkEditUrl" placeholder="https://…">
+      <div class="flbl">Titre</div>
+      <input type="text" class="finput" id="lkEditTitle" placeholder="Nom du lien">
+      <input type="hidden" id="lkEditId">
+      <button class="sbtn sbtn-ok" onclick="saveEditLink()">Enregistrer</button>
+      <button class="sbtn sbtn-no" onclick="closeLkEdit()">Annuler</button>
     </div>
   </div>
 </div>
@@ -885,12 +904,41 @@ function renderLinks(){
     <div class="lkcard" onclick="openUrl('${lk.url}')">
       <div class="fav"><img src="https://www.google.com/s2/favicons?domain=${lk.domain}&sz=64" onerror="this.parentNode.textContent='🌐'"></div>
       <div class="lkinfo"><div class="lktitle">${lk.title}</div><div class="lkurl">${lk.domain}</div></div>
-      <button class="lk-del" onclick="event.stopPropagation();delLink(${lk.id})">×</button>
+      <div class="lk-actions">
+        <button class="lk-edit" onclick="event.stopPropagation();openLkEdit(${lk.id})" title="Modifier">
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="lk-del" onclick="event.stopPropagation();delLink(${lk.id})">×</button>
+      </div>
     </div>`).join('');
 }
 
 function openUrl(url){ window.open(url,'_blank'); }
 function delLink(id){S.links=S.links.filter(x=>x.id!==id);save();renderLinks();}
+
+// Édition lien
+function openLkEdit(id){
+  const lk=S.links.find(x=>x.id===id); if(!lk)return;
+  document.getElementById('lkEditId').value=id;
+  document.getElementById('lkEditUrl').value=lk.url;
+  document.getElementById('lkEditTitle').value=lk.title;
+  document.getElementById('lkEditModal').classList.add('open');
+  setTimeout(()=>document.getElementById('lkEditTitle').focus(),360);
+}
+function closeLkEdit(){document.getElementById('lkEditModal').classList.remove('open');}
+function saveEditLink(){
+  const id=Number(document.getElementById('lkEditId').value);
+  const raw=document.getElementById('lkEditUrl').value;
+  const title=document.getElementById('lkEditTitle').value.trim();
+  const url=normalizeUrl(raw);
+  if(!url){toast('URL invalide');return;}
+  try{
+    const domain=new URL(url).hostname.replace('www.','');
+    const lk=S.links.find(x=>x.id===id); if(!lk)return;
+    lk.url=url; lk.title=title||domain; lk.domain=domain;
+    save();closeLkEdit();renderLinks();toast('✅ Lien modifié !');
+  }catch(e){toast('URL invalide');}
+}
 
 // ── INIT ───────────────────────────────────
 renderMsgs();renderReminders();renderLists();renderLinks();
