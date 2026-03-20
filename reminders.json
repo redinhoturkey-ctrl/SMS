@@ -1,7 +1,7 @@
 [
   {
     "id": 1774038841631,
-    "title": "Tâes iPhone",
+    "title": "TÃ¢ÂÂes iPhone",
     "dt": "2026-03-20T21:35",
     "done": false,
     "smsSent": true,
@@ -14,13 +14,5 @@
     "done": false,
     "smsSent": true,
     "smsSentAt": "2026-03-20T20:51:49.320Z"
-  },
-  {
-    "id": 1774039736757,
-    "title": "Test 22",
-    "dt": "2026-03-20T21:50",
-    "done": false,
-    "smsSent": true,
-    "smsSentAt": "2026-03-20T20:51:49.486Z"
   }
 ]
