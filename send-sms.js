@@ -1,5 +1,5 @@
 // send-sms.js — tourne dans GitHub Actions toutes les minutes
-const fs   = require('fs');
+const fs    = require('fs');
 const https = require('https');
 
 const SMS_USER = process.env.SMS_USER;
@@ -13,7 +13,7 @@ try {
   const raw = fs.readFileSync(FILE, 'utf8').trim();
   reminders = JSON.parse(raw || '[]');
 } catch (e) {
-  console.log('reminders.json vide ou inexistant, rien à faire.');
+  console.log('reminders.json vide ou inexistant.');
   process.exit(0);
 }
 
@@ -23,31 +23,27 @@ if (!Array.isArray(reminders) || reminders.length === 0) {
 }
 
 const now = Date.now();
+console.log(`🕐 Heure actuelle : ${new Date(now).toISOString()}`);
+console.log(`📋 ${reminders.length} rappel(s) trouvé(s) dans le fichier`);
+
 let changed = false;
 
-// ── Envoyer un SMS via HTTPS ──────────────────────────────────
+// ── Envoi SMS ─────────────────────────────────────────────────
 function sendSMS(message) {
   return new Promise((resolve, reject) => {
     const path = `/sendmsg?user=${encodeURIComponent(SMS_USER)}&pass=${encodeURIComponent(SMS_PASS)}&msg=${encodeURIComponent(message)}`;
     const options = { hostname: SMS_HOST, path, method: 'GET' };
+    console.log(`📡 Appel API : https://${SMS_HOST}${path.replace(SMS_PASS, '***')}`);
     const req = https.request(options, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
-        // Free Mobile renvoie 200 si OK
-        if (res.statusCode === 200) {
-          console.log(`✅ SMS envoyé (HTTP ${res.statusCode})`);
-          resolve(true);
-        } else {
-          console.warn(`⚠️ SMS échoué (HTTP ${res.statusCode}): ${body}`);
-          resolve(false);
-        }
+        console.log(`📨 Réponse HTTP ${res.statusCode} : ${body.trim()}`);
+        if (res.statusCode === 200) resolve(true);
+        else resolve(false);
       });
     });
-    req.on('error', err => {
-      console.error('❌ Erreur réseau SMS:', err.message);
-      reject(err);
-    });
+    req.on('error', err => { console.error('❌ Erreur réseau:', err.message); reject(err); });
     req.end();
   });
 }
@@ -55,39 +51,42 @@ function sendSMS(message) {
 // ── Vérifier chaque rappel ────────────────────────────────────
 async function main() {
   for (const r of reminders) {
-    // Ignorer : déjà envoyé, marqué done, ou heure pas encore atteinte
-    if (r.smsSent || r.done) continue;
+    console.log(`\n--- Rappel : "${r.title}" | dt: ${r.dt} | done: ${r.done} | smsSent: ${r.smsSent}`);
+
+    if (r.smsSent) { console.log('⏭️  Déjà envoyé, on passe.'); continue; }
+    if (r.done)    { console.log('⏭️  Marqué done, on passe.'); continue; }
 
     const triggerTime = new Date(r.dt).getTime();
+    const diffMin = (now - triggerTime) / 60000;
+    console.log(`⏱️  Différence : ${diffMin.toFixed(1)} minutes (positif = dans le passé)`);
 
-    // Fenêtre : entre -2 min et maintenant (tolérance si job a du retard)
-    if (triggerTime <= now && triggerTime > now - 2 * 60 * 1000) {
-      console.log(`🔔 Rappel déclenché : "${r.title}" (prévu ${r.dt})`);
+    // Envoyer si le rappel est passé (même depuis longtemps) et pas encore envoyé
+    if (triggerTime <= now) {
+      console.log(`🔔 Déclenchement du rappel : "${r.title}"`);
       try {
         const ok = await sendSMS('⏰ Rappel : ' + r.title);
         if (ok) {
           r.smsSent = true;
           r.smsSentAt = new Date().toISOString();
           changed = true;
+          console.log('✅ SMS envoyé avec succès !');
+        } else {
+          console.log('⚠️ SMS échoué (réponse non-200).');
         }
       } catch (e) {
-        console.error('Erreur envoi SMS:', e.message);
+        console.error('❌ Exception lors de l\'envoi:', e.message);
       }
-    } else if (triggerTime <= now - 2 * 60 * 1000) {
-      // Rappel très en retard (> 2 min) — on le marque quand même pour éviter le spam
-      console.log(`⏭️ Rappel expiré (trop vieux) : "${r.title}"`);
-      r.smsSent = true;
-      r.smsSentAt = 'expired-' + new Date().toISOString();
-      changed = true;
+    } else {
+      const waitMin = (triggerTime - now) / 60000;
+      console.log(`⏳ Pas encore l'heure (dans ${waitMin.toFixed(1)} min).`);
     }
   }
 
-  // ── Réécrire reminders.json si modifié ──────────────────────
   if (changed) {
     fs.writeFileSync(FILE, JSON.stringify(reminders, null, 2));
-    console.log('📝 reminders.json mis à jour.');
+    console.log('\n📝 reminders.json mis à jour (smsSent = true).');
   } else {
-    console.log('Aucun rappel à déclencher maintenant.');
+    console.log('\nAucun changement dans reminders.json.');
   }
 }
 
