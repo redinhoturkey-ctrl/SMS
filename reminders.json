@@ -4,13 +4,15 @@
     "title": "JerkedElle Dididid duire duire",
     "dt": "2026-03-20T22:00",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-03-20T21:17:47.379Z"
   },
   {
     "id": 1774040277510,
     "title": "Ndjdbdd",
     "dt": "2026-03-20T21:59",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-03-20T21:17:47.563Z"
   }
 ]
