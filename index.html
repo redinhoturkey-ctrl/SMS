@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0184fa">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Moi">
+<link rel="manifest" href="/SMS/manifest.json">
+<link rel="apple-touch-icon" href="/SMS/apple-touch-icon.png">
+
+<!-- Splash screens iOS (optionnel mais propre) -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<title>Moi</title>
+<style>
+  :root {
+    --bg:#f5f5f7; --surface:#fff; --surface2:#ebebf0;
+    --text:#1a1a2e; --text2:#6e6e80; --text3:#b0b0c0;
+    --accent:#0184fa; --accent2:#e0f4ff;
+    --green:#2dcc70; --orange:#ff9d00; --red:#ff4757;
+    --sep:#ebebf0; --tab-h:72px; --r:16px; --r-sm:12px;
+    --grad: linear-gradient(135deg, #0184fa 0%, #51ead5 100%);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;width:100%;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+
+  /* ── SPLASH SCREEN ── */
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #0184fa 0%, #51ead5 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  #splash.hide { opacity: 0; transform: scale(1.04); pointer-events: none; }
+  .splash-emoji { font-size: 88px; animation: splashPop .5s cubic-bezier(.34,1.56,.64,1) both; }
+  .splash-name {
+    font-size: 28px; font-weight: 700; color: white;
+    letter-spacing: -.5px; opacity: 0;
+    animation: splashFade .4s .2s ease both;
+  }
+  .splash-sub {
+    font-size: 14px; color: rgba(255,255,255,.7);
+    opacity: 0; animation: splashFade .4s .35s ease both;
+  }
+  @keyframes splashPop  { from{opacity:0;transform:scale(.5)} to{opacity:1;transform:scale(1)} }
+  @keyframes splashFade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+  /* ── APP SHELL ── */
+  .app{position:fixed;inset:0;bottom:var(--tab-h);overflow:hidden;}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;background:var(--bg);overflow:hidden;}
+  .screen.active{display:flex;}
+  .hdr{padding:54px 22px 14px;flex-shrink:0;position:relative;}
+  .hdr h1{font-size:30px;font-weight:700;letter-spacing:-.6px;}
+  .hdr .sub{font-size:13px;color:var(--text2);margin-top:2px;}
+  .btn-plus{position:absolute;top:52px;right:20px;width:36px;height:36px;border-radius:50%;background:var(--grad);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(1,132,250,.35);transition:transform .12s;}
+  .btn-plus:active{transform:scale(.88);}
+  .btn-plus svg{fill:#fff;}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:4px 16px 20px;}
+  .scroll::-webkit-scrollbar{display:none;}
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;gap:10px;color:var(--text2);}
+  .empty .ico{font-size:48px;}
+  .empty p{font-size:14px;text-align:center;line-height:1.6;}
+
+  /* CHAT */
+  #chat .msgs{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:5px;-webkit-overflow-scrolling:touch;}
+  #chat .msgs::-webkit-scrollbar{display:none;}
+  .mrow{display:flex;flex-direction:column;animation:pop .22s cubic-bezier(.34,1.56,.64,1) both;}
+  @keyframes pop{from{opacity:0;transform:scale(.84) translateY(8px)}to{opacity:1;transform:none}}
+  .mrow.out{align-items:flex-end;}
+  .bubble{max-width:76%;padding:9px 14px;border-radius:20px;font-size:15px;line-height:1.45;word-break:break-word;}
+  .mrow.out .bubble{background:var(--grad);color:#fff;border-bottom-right-radius:5px;}
+  .mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 4px;}
+  .chat-bar{flex-shrink:0;padding:8px 12px 12px;display:flex;align-items:flex-end;gap:8px;border-top:1px solid var(--sep);background:var(--surface);}
+  .chat-wrap{flex:1;background:var(--bg);border-radius:22px;padding:8px 14px;border:1.5px solid var(--sep);display:flex;align-items:center;}
+  #chatInput{background:transparent;border:none;outline:none;color:var(--text);font-size:15px;font-family:inherit;width:100%;resize:none;max-height:88px;line-height:1.4;}
+  #chatInput::placeholder{color:var(--text3);}
+  .send-btn{width:34px;height:34px;border-radius:50%;background:var(--grad);border:none;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 10px rgba(1,132,250,.35);transition:transform .1s;}
+  .send-btn:active{transform:scale(.88);}
+  .send-btn svg{fill:#fff;width:15px;height:15px;}
+
+  /* RAPPELS */
+  .r-card{background:var(--surface);border-radius:var(--r);padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:opacity .28s;}
+  .r-card.done{opacity:.4;}
+  .r-card.done .r-title{text-decoration:line-through;color:var(--text2);}
+  .r-ring{width:22px;height:22px;border-radius:50%;flex-shrink:0;margin-top:1px;border:2px solid var(--orange);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+  .r-card.done .r-ring{background:var(--orange);border-color:var(--orange);}
+  .r-tick{display:none;}
+  .r-card.done .r-tick{display:block;}
+  .r-body{flex:1;}
+  .r-title{font-size:15px;font-weight:500;}
+  .r-time{font-size:12px;color:var(--orange);margin-top:3px;}
+  .r-time.past{color:var(--red);}
+  .r-sms{font-size:11px;margin-top:4px;}
+  .sms-ok{color:var(--green);}
+  .sms-wait{color:var(--text3);}
+  .sms-gh{color:var(--accent);}
+  .del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;line-height:1;}
+  .del-btn:active{color:var(--red);}
+
+  /* LISTES */
+  .lgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-bottom:16px;}
+  .ltile{background:var(--surface);border-radius:var(--r);padding:14px;cursor:pointer;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06);border-top:3px solid var(--accent);transition:transform .12s,box-shadow .12s;}
+  .ltile:active{transform:scale(.95);box-shadow:none;}
+  .t-emoji{font-size:26px;margin-bottom:8px;}
+  .t-name{font-size:14px;font-weight:600;}
+  .t-count{font-size:12px;color:var(--text2);margin-top:2px;}
+  .t-add{background:transparent;border:1.5px dashed var(--text3);box-shadow:none;border-top:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;color:var(--text3);font-size:12px;}
+  .t-add .plus{font-size:30px;color:var(--accent);line-height:1;}
+  .ldetail{position:absolute;inset:0;background:var(--bg);transform:translateX(100%);transition:transform .33s cubic-bezier(.25,.46,.45,.94);display:flex;flex-direction:column;z-index:50;}
+  .ldetail.open{transform:none;}
+  .dhdr{padding:50px 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--sep);background:var(--surface);flex-shrink:0;}
+  .back-btn{background:none;border:none;cursor:pointer;color:var(--accent);font-size:15px;font-family:inherit;display:flex;align-items:center;gap:4px;}
+  .dhdr h2{font-size:17px;font-weight:600;flex:1;}
+  .del-list{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;font-family:inherit;font-weight:500;}
+  .cscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .cscroll::-webkit-scrollbar{display:none;}
+  .citem{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--sep);background:var(--surface);}
+  .cring{width:22px;height:22px;border-radius:50%;border:2px solid var(--sep);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+  .citem.checked .cring{background:var(--green);border-color:var(--green);}
+  .citem.checked .clbl{text-decoration:line-through;color:var(--text2);}
+  .clbl{font-size:15px;flex:1;}
+  .addrow{display:flex;align-items:center;padding:12px 16px;gap:11px;border-bottom:1px solid var(--sep);background:var(--surface);}
+  .adddot{width:22px;height:22px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700;flex-shrink:0;}
+  .addrow input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:15px;font-family:inherit;}
+  .addrow input::placeholder{color:var(--text3);}
+
+  /* LIENS */
+  .lkcard{background:var(--surface);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:opacity .18s;}
+  .lkcard:active{opacity:.6;}
+  .fav{width:40px;height:40px;border-radius:11px;background:var(--surface2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;}
+  .fav img{width:100%;height:100%;object-fit:cover;border-radius:11px;}
+  .lkinfo{flex:1;min-width:0;}
+  .lktitle{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lkurl{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .lk-del{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;}
+
+  /* TABS */
+  .tabs{position:fixed;bottom:0;left:0;right:0;height:var(--tab-h);background:rgba(255,255,255,.94);backdrop-filter:blur(20px) saturate(180%);border-top:1px solid var(--sep);display:flex;align-items:flex-start;justify-content:space-around;padding-top:10px;z-index:100;}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:4px 0;transition:opacity .12s;}
+  .tab:active{opacity:.55;}
+  .ticon{width:26px;height:26px;display:flex;align-items:center;justify-content:center;position:relative;}
+  .ticon svg{fill:var(--text3);transition:fill .18s;}
+  .tlbl{font-size:10px;color:var(--text3);font-weight:500;transition:color .18s;}
+  .tab.active .ticon svg{fill:var(--accent);}
+  .tab.active .tlbl{color:var(--accent);}
+  .nbadge{background:var(--red);color:#fff;border-radius:8px;font-size:9px;font-weight:700;padding:1px 4px;position:absolute;top:-3px;right:-5px;min-width:14px;text-align:center;}
+
+  /* MODALS */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.22);z-index:300;display:none;align-items:flex-end;backdrop-filter:blur(8px);}
+  .overlay.open{display:flex;}
+  .sheet{background:var(--bg);border-radius:24px 24px 0 0;padding:0 0 36px;width:100%;animation:up .32s cubic-bezier(.25,.46,.45,.94) both;max-height:90%;overflow-y:auto;}
+  .sheet::-webkit-scrollbar{display:none;}
+  @keyframes up{from{transform:translateY(100%)}to{transform:none}}
+  .handle{width:36px;height:4px;background:var(--text3);border-radius:2px;margin:10px auto 16px;opacity:.4;}
+  .stitle{font-size:17px;font-weight:600;text-align:center;margin-bottom:18px;}
+  .sbody{padding:0 16px;}
+  .flbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text2);margin-bottom:6px;padding-left:2px;}
+  .finput{background:var(--surface);border:none;outline:none;color:var(--text);font-family:inherit;font-size:16px;padding:13px 14px;border-radius:var(--r-sm);width:100%;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .finput::placeholder{color:var(--text3);}
+  .dtrow{display:flex;gap:10px;margin-bottom:14px;}
+  .dtcol{flex:1;}
+  .dtcol .flbl{margin-bottom:6px;}
+  .dtcol .finput{margin-bottom:0;}
+  .sbtn{width:100%;padding:14px;border-radius:var(--r);border:none;font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;margin-top:6px;transition:opacity .14s,transform .1s;}
+  .sbtn:active{opacity:.7;transform:scale(.98);}
+  .sbtn-ok{background:var(--grad);color:#fff;box-shadow:0 4px 14px rgba(1,132,250,.3);}
+  .sbtn-no{background:var(--surface);color:var(--accent);margin-top:8px;}
+  .erow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+  .eopt{font-size:26px;padding:6px;border-radius:10px;cursor:pointer;transition:background .14s;}
+  .eopt.sel{background:var(--accent2);}
+  .crow{display:flex;gap:10px;margin-bottom:18px;}
+  .cdot{width:28px;height:28px;border-radius:50%;cursor:pointer;transition:transform .14s;border:2.5px solid transparent;}
+  .cdot.sel{border-color:rgba(0,0,0,.2);transform:scale(1.15);}
+
+  /* TOAST */
+  .toast{position:fixed;top:56px;left:50%;transform:translateX(-50%) translateY(-8px);background:rgba(26,26,46,.82);color:#fff;padding:9px 18px;border-radius:18px;font-size:13px;z-index:500;opacity:0;transition:all .24s;pointer-events:none;white-space:nowrap;max-width:90%;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* BANNIÈRE */
+  .banner{position:fixed;top:0;left:0;right:0;padding:14px 16px 12px;font-size:13px;font-weight:500;text-align:center;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;}
+  .banner.show{opacity:1;}
+  .banner.ok{background:var(--green);color:#fff;}
+  .banner.err{background:var(--red);color:#fff;}
+  .banner.info{background:var(--accent);color:#fff;}
+
+  /* STATUS GH */
+  .config-bar{position:fixed;bottom:calc(var(--tab-h) + 8px);left:0;right:0;display:flex;justify-content:center;}
+  .config-pill{background:var(--surface);border:1px solid var(--sep);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+  .gh-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);transition:background .4s;}
+  .gh-dot.on{background:var(--green);}
+</style>
+</head>
+<body>
+
+<!-- ── SPLASH SCREEN ── -->
+<div id="splash">
+  <div class="splash-emoji">💬</div>
+  <div class="splash-name">Moi</div>
+  <div class="splash-sub">Chargement…</div>
+</div>
+
+<div class="app">
+
+  <!-- CHAT -->
+  <div class="screen active" id="chat">
+    <div class="hdr">
+      <h1>Moi 💬</h1>
+      <div class="sub">Notes &amp; pensées rapides</div>
+    </div>
+    <div class="msgs" id="chatMsgs"></div>
+    <div class="chat-bar">
+      <div class="chat-wrap">
+        <textarea id="chatInput" rows="1" placeholder="Écris quelque chose…"></textarea>
+      </div>
+      <button class="send-btn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- RAPPELS -->
+  <div class="screen" id="rappels">
+    <div class="hdr">
+      <h1>Rappels 🔔</h1>
+      <div class="sub" id="rSub">Aucun rappel</div>
+      <button class="btn-plus" onclick="openR()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 1V17M1 9H17" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="scroll" id="rList"></div>
+  </div>
+
+  <!-- LISTES -->
+  <div class="screen" id="listes">
+    <div class="hdr">
+      <h1>Listes ✅</h1>
+      <button class="btn-plus" onclick="openL()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 1V17M1 9H17" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="scroll"><div class="lgrid" id="listGrid"></div></div>
+    <div class="ldetail" id="listDetail">
+      <div class="dhdr">
+        <button class="back-btn" onclick="closeDetail()">
+          <svg width="9" height="14" viewBox="0 0 9 14"><path d="M7.5 1.5L2 7L7.5 12.5" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+          Retour
+        </button>
+        <h2 id="detailTitle"></h2>
+        <button class="del-list" onclick="delList()">Suppr.</button>
+      </div>
+      <div class="cscroll">
+        <div class="addrow">
+          <div class="adddot">+</div>
+          <input type="text" id="newItem" placeholder="Nouvel élément…" onkeydown="if(event.key==='Enter')addItem()">
+        </div>
+        <div id="checkItems"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIENS -->
+  <div class="screen" id="liens">
+    <div class="hdr">
+      <h1>Liens 🔗</h1>
+      <button class="btn-plus" onclick="openLk()">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 1V17M1 9H17" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="scroll" id="linkList"></div>
+  </div>
+
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="goTab('chat',this)">
+    <div class="ticon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"/></svg></div>
+    <span class="tlbl">Chat</span>
+  </div>
+  <div class="tab" onclick="goTab('rappels',this)">
+    <div class="ticon">
+      <svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 22C13.1 22 14 21.1 14 20H10C10 21.1 10.9 22 12 22ZM18 16V11C18 7.93 16.36 5.36 13.5 4.68V4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4V4.68C7.63 5.36 6 7.92 6 11V16L4 18V19H20V18L18 16Z"/></svg>
+      <div class="nbadge" id="rBadge" style="display:none">0</div>
+    </div>
+    <span class="tlbl">Rappels</span>
+  </div>
+  <div class="tab" onclick="goTab('listes',this)">
+    <div class="ticon"><svg width="22" height="22" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="2" rx="1"/><rect x="3" y="11" width="18" height="2" rx="1"/><rect x="3" y="17" width="18" height="2" rx="1"/></svg></div>
+    <span class="tlbl">Listes</span>
+  </div>
+  <div class="tab" onclick="goTab('liens',this)">
+    <div class="ticon"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M17 7H13V9H17C18.65 9 20 10.35 20 12C20 13.65 18.65 15 17 15H13V17H17C19.76 17 22 14.76 22 12C22 9.24 19.76 7 17 7ZM11 15H7C5.35 15 4 13.65 4 12C4 10.35 5.35 9 7 9H11V7H7C4.24 7 2 9.24 2 12C2 14.76 4.24 17 7 17H11V15ZM8 11H16V13H8V11Z"/></svg></div>
+    <span class="tlbl">Liens</span>
+  </div>
+</div>
+
+<div class="config-bar">
+  <div class="config-pill">
+    <div class="gh-dot" id="ghDot"></div>
+    <span id="ghStatus">Connexion GitHub…</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="banner" id="banner"></div>
+
+<!-- MODAL RAPPEL -->
+<div class="overlay" id="rModal" onclick="if(event.target===this)closeR()">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="stitle">Nouveau rappel</div>
+    <div class="sbody">
+      <div class="flbl">Titre</div>
+      <input type="text" class="finput" id="rTitle" placeholder="De quoi te rappeler ?">
+      <div class="dtrow">
+        <div class="dtcol"><div class="flbl">Date</div><input type="date" class="finput" id="rDate"></div>
+        <div class="dtcol"><div class="flbl">Heure</div><input type="time" class="finput" id="rTime"></div>
+      </div>
+      <button class="sbtn sbtn-ok" onclick="addReminder()">Ajouter le rappel</button>
+      <button class="sbtn sbtn-no" onclick="closeR()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LISTE -->
+<div class="overlay" id="lModal" onclick="if(event.target===this)closeL()">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="stitle">Nouvelle liste</div>
+    <div class="sbody">
+      <div class="flbl">Nom</div>
+      <input type="text" class="finput" id="lName" placeholder="Nom de la liste">
+      <div class="flbl">Icône</div>
+      <div class="erow" id="ePicker">
+        <span class="eopt sel" onclick="pickE(this)" data-e="📝">📝</span>
+        <span class="eopt" onclick="pickE(this)" data-e="🛒">🛒</span>
+        <span class="eopt" onclick="pickE(this)" data-e="💪">💪</span>
+        <span class="eopt" onclick="pickE(this)" data-e="📚">📚</span>
+        <span class="eopt" onclick="pickE(this)" data-e="🎯">🎯</span>
+        <span class="eopt" onclick="pickE(this)" data-e="✈️">✈️</span>
+        <span class="eopt" onclick="pickE(this)" data-e="💡">💡</span>
+        <span class="eopt" onclick="pickE(this)" data-e="⭐">⭐</span>
+        <span class="eopt" onclick="pickE(this)" data-e="🎵">🎵</span>
+        <span class="eopt" onclick="pickE(this)" data-e="🍕">🍕</span>
+      </div>
+      <div class="flbl">Couleur</div>
+      <div class="crow" id="cPicker">
+        <div class="cdot sel" onclick="pickC(this,'#0184fa')" style="background:#0184fa"></div>
+        <div class="cdot" onclick="pickC(this,'#2dcc70')" style="background:#2dcc70"></div>
+        <div class="cdot" onclick="pickC(this,'#ff9d00')" style="background:#ff9d00"></div>
+        <div class="cdot" onclick="pickC(this,'#a55eea')" style="background:#a55eea"></div>
+        <div class="cdot" onclick="pickC(this,'#ff4757')" style="background:#ff4757"></div>
+        <div class="cdot" onclick="pickC(this,'#00b8d9')" style="background:#00b8d9"></div>
+      </div>
+      <button class="sbtn sbtn-ok" onclick="addList()">Créer</button>
+      <button class="sbtn sbtn-no" onclick="closeL()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LIEN -->
+<div class="overlay" id="lkModal" onclick="if(event.target===this)closeLk()">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="stitle">Sauvegarder un lien</div>
+    <div class="sbody">
+      <div class="flbl">URL</div>
+      <input type="url" class="finput" id="lkUrl" placeholder="https://…">
+      <div class="flbl">Titre (optionnel)</div>
+      <input type="text" class="finput" id="lkTitle" placeholder="Nom du lien">
+      <button class="sbtn sbtn-ok" onclick="addLink()">Sauvegarder</button>
+      <button class="sbtn sbtn-no" onclick="closeLk()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIG TOKEN -->
+<div class="overlay" id="cfgModal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="stitle">⚙️ Configuration GitHub</div>
+    <div class="sbody">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+        Pour que les SMS fonctionnent <strong>sans ouvrir l'app</strong>, entre ton
+        <strong>GitHub Token</strong> (Fine-grained, accès Contents R/W sur le repo SMS).
+      </p>
+      <div class="flbl">GitHub Token</div>
+      <input type="password" class="finput" id="cfgToken" placeholder="github_pat_…">
+      <button class="sbtn sbtn-ok" onclick="saveConfig()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────
+const GH_OWNER = 'redinhoturkey-ctrl';
+const GH_REPO  = 'SMS';
+const GH_FILE  = 'reminders.json';
+const GH_API   = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+
+let S = JSON.parse(localStorage.getItem('moiApp6') || '{"messages":[],"lists":[],"links":[],"reminders":[]}');
+let ghToken = localStorage.getItem('ghToken') || '';
+let curList = null, selE = '📝', selC = '#0184fa';
+const save = () => localStorage.setItem('moiApp6', JSON.stringify(S));
+
+// ── SPLASH ─────────────────────────────────────────
+function hideSplash() {
+  const sp = document.getElementById('splash');
+  sp.classList.add('hide');
+  setTimeout(() => sp.remove(), 500);
+}
+// Masquer le splash après 1.4s (animation) ou quand le DOM est prêt
+window.addEventListener('load', () => setTimeout(hideSplash, 1400));
+
+// ── UTILS ──────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function showBanner(type, msg) {
+  const b = document.getElementById('banner');
+  b.textContent = msg; b.className = `banner show ${type}`;
+  clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('show'), 3500);
+}
+function setGhStatus(ok, msg) {
+  document.getElementById('ghDot').className = 'gh-dot' + (ok ? ' on' : '');
+  document.getElementById('ghStatus').textContent = msg;
+}
+
+// ── GITHUB API ─────────────────────────────────────
+async function ghGet() {
+  const res = await fetch(GH_API + '?_=' + Date.now(), {
+    headers: { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github.v3+json' }
+  });
+  if (!res.ok) throw new Error('GET ' + res.status);
+  const data = await res.json();
+  return { content: JSON.parse(atob(data.content.replace(/\n/g,''))), sha: data.sha };
+}
+async function ghPut(content, sha) {
+  const res = await fetch(GH_API, {
+    method: 'PUT',
+    headers: { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: 'chore: update reminders', content: btoa(unescape(encodeURIComponent(JSON.stringify(content, null, 2)))), sha })
+  });
+  if (!res.ok) throw new Error('PUT ' + res.status);
+}
+async function loadReminders() {
+  if (!ghToken) return;
+  try {
+    const { content } = await ghGet();
+    const local = S.reminders || [];
+    S.reminders = content.map(r => { const l = local.find(x => x.id===r.id); return l ? {...r, smsSent: r.smsSent||l.smsSent} : r; });
+    local.forEach(l => { if (!S.reminders.find(r => r.id===l.id)) S.reminders.push(l); });
+    save(); renderReminders();
+    setGhStatus(true, 'GitHub connecté ✓');
+  } catch(e) { setGhStatus(false, 'Erreur : ' + e.message); }
+}
+async function saveReminders() {
+  if (!ghToken) return;
+  const { sha } = await ghGet();
+  await ghPut(S.reminders || [], sha);
+}
+
+// ── CONFIG TOKEN ───────────────────────────────────
+function saveConfig() {
+  const t = document.getElementById('cfgToken').value.trim();
+  if (!t) { toast('Entre un token'); return; }
+  ghToken = t; localStorage.setItem('ghToken', t);
+  document.getElementById('cfgModal').classList.remove('open');
+  loadReminders(); toast('✅ Token enregistré !');
+}
+if (!ghToken) document.getElementById('cfgModal').classList.add('open');
+else loadReminders();
+setInterval(loadReminders, 60000);
+
+// ── TABS ───────────────────────────────────────────
+function goTab(id, el) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); el.classList.add('active');
+  if(id==='rappels') renderReminders();
+  if(id==='listes')  renderLists();
+  if(id==='liens')   renderLinks();
+}
+
+// ── CHAT ───────────────────────────────────────────
+function renderMsgs() {
+  const c = document.getElementById('chatMsgs');
+  if (!S.messages.length) { c.innerHTML='<div class="empty"><div class="ico">💬</div><p>C\'est ton espace privé.<br>Note tout ce qui te passe par la tête.</p></div>'; return; }
+  c.innerHTML = S.messages.map(m => `<div class="mrow out"><div class="bubble">${m.text}</div><div class="mtime">${new Date(m.ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div></div>`).join('');
+  c.scrollTop = c.scrollHeight;
+}
+function sendMsg() {
+  const i=document.getElementById('chatInput'),t=i.value.trim(); if(!t)return;
+  S.messages.push({text:t,ts:Date.now()}); save(); i.value=''; i.style.height='auto'; renderMsgs();
+}
+document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+document.getElementById('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,88)+'px';});
+
+// ── RAPPELS ────────────────────────────────────────
+function openR(){const n=new Date();n.setMinutes(n.getMinutes()+30);document.getElementById('rTitle').value='';document.getElementById('rDate').value=n.toISOString().slice(0,10);document.getElementById('rTime').value=n.toTimeString().slice(0,5);document.getElementById('rModal').classList.add('open');setTimeout(()=>document.getElementById('rTitle').focus(),360);}
+function closeR(){document.getElementById('rModal').classList.remove('open');}
+async function addReminder(){
+  const title=document.getElementById('rTitle').value.trim(), date=document.getElementById('rDate').value, time=document.getElementById('rTime').value;
+  if(!title){toast('Ajoute un titre');return;} if(!date){toast('Choisis une date');return;} if(!time){toast('Choisis une heure');return;}
+  const r={id:Date.now(),title,dt:date+'T'+time,done:false,smsSent:false};
+  if(!S.reminders)S.reminders=[];
+  S.reminders.push(r); save(); closeR(); renderReminders();
+  toast('⏳ Sauvegarde…');
+  try { await saveReminders(); toast('✅ Rappel enregistré !'); showBanner('info','🤖 GitHub Actions enverra le SMS à l\'heure prévue'); }
+  catch(e) { toast('⚠️ Sauvegardé en local seulement'); }
+}
+function renderReminders(){
+  if(!S.reminders)S.reminders=[];
+  const list=document.getElementById('rList'),sub=document.getElementById('rSub'),badge=document.getElementById('rBadge');
+  const active=S.reminders.filter(r=>!r.done);
+  sub.textContent=active.length?`${active.length} rappel${active.length>1?'s':''}` :'Aucun rappel';
+  const up=S.reminders.filter(r=>!r.done&&new Date(r.dt)>new Date()).length;
+  badge.style.display=up?'block':'none'; badge.textContent=up;
+  if(!S.reminders.length){list.innerHTML='<div class="empty"><div class="ico">🔔</div><p>Aucun rappel.<br>Appuie sur + pour en créer un.</p></div>';return;}
+  list.innerHTML=[...S.reminders].sort((a,b)=>new Date(a.dt)-new Date(b.dt)).map(r=>{
+    const d=new Date(r.dt),past=d<new Date()&&!r.done;
+    const ds=d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const smsHtml=r.smsSent?`<div class="r-sms sms-ok">📱 SMS envoyé ✓</div>`:r.done?`<div class="r-sms sms-wait">—</div>`:`<div class="r-sms sms-gh">🤖 SMS automatique prévu</div>`;
+    return `<div class="r-card ${r.done?'done':''}"><div class="r-ring" onclick="toggleR(${r.id})"><svg class="r-tick" width="11" height="9" viewBox="0 0 11 9"><path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></div><div class="r-body"><div class="r-title">${r.title}</div><div class="r-time ${past?'past':''}">⏰ ${ds}</div>${smsHtml}</div><button class="del-btn" onclick="delR(${r.id})">×</button></div>`;
+  }).join('');
+}
+async function toggleR(id){const r=S.reminders.find(x=>x.id===id);if(r)r.done=!r.done;save();renderReminders();await saveReminders();}
+async function delR(id){S.reminders=S.reminders.filter(x=>x.id!==id);save();renderReminders();await saveReminders();}
+
+// ── LISTES ─────────────────────────────────────────
+function pickE(el){document.querySelectorAll('.eopt').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');selE=el.dataset.e;}
+function pickC(el,c){document.querySelectorAll('.cdot').forEach(d=>d.classList.remove('sel'));el.classList.add('sel');selC=c;}
+function openL(){selE='📝';selC='#0184fa';document.getElementById('lName').value='';document.querySelectorAll('.eopt').forEach((e,i)=>e.classList.toggle('sel',i===0));document.querySelectorAll('.cdot').forEach((d,i)=>d.classList.toggle('sel',i===0));document.getElementById('lModal').classList.add('open');setTimeout(()=>document.getElementById('lName').focus(),360);}
+function closeL(){document.getElementById('lModal').classList.remove('open');}
+function addList(){const name=document.getElementById('lName').value.trim();if(!name){toast('Donne un nom');return;}S.lists.push({id:Date.now(),name,emoji:selE,color:selC,items:[]});save();closeL();renderLists();}
+function renderLists(){const g=document.getElementById('listGrid');g.innerHTML=S.lists.map(l=>{const done=l.items.filter(i=>i.checked).length;return`<div class="ltile" style="border-top-color:${l.color}" onclick="openDetail(${l.id})"><div class="t-emoji">${l.emoji}</div><div><div class="t-name">${l.name}</div><div class="t-count">${l.items.length} · ${done} fait${done!==1?'s':''}</div></div></div>`;}).join('')+`<div class="ltile t-add" onclick="openL()"><div class="plus">+</div><p>Nouvelle liste</p></div>`;}
+function openDetail(id){curList=id;const l=S.lists.find(x=>x.id===id);document.getElementById('detailTitle').textContent=l.emoji+' '+l.name;document.getElementById('newItem').value='';renderItems();document.getElementById('listDetail').classList.add('open');setTimeout(()=>document.getElementById('newItem').focus(),360);}
+function closeDetail(){document.getElementById('listDetail').classList.remove('open');renderLists();}
+function delList(){if(!confirm('Supprimer ?'))return;S.lists=S.lists.filter(l=>l.id!==curList);save();closeDetail();}
+function renderItems(){const l=S.lists.find(x=>x.id===curList);const c=document.getElementById('checkItems');if(!l||!l.items.length){c.innerHTML='';return;}c.innerHTML=l.items.map(it=>`<div class="citem ${it.checked?'checked':''}"><div class="cring" onclick="toggleItem(${it.id})"><svg width="10" height="8" viewBox="0 0 10 8"><path d="M1 4L3.5 6.5L9 1.5" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></div><span class="clbl">${it.text}</span><button class="del-btn" onclick="delItem(${it.id})">×</button></div>`).join('');}
+function addItem(){const i=document.getElementById('newItem'),t=i.value.trim();if(!t)return;const l=S.lists.find(x=>x.id===curList);l.items.push({id:Date.now(),text:t,checked:false});save();i.value='';renderItems();}
+document.getElementById('newItem').addEventListener('keydown',e=>{if(e.key==='Enter')addItem();});
+function toggleItem(id){const l=S.lists.find(x=>x.id===curList);const i=l.items.find(x=>x.id===id);if(i)i.checked=!i.checked;save();renderItems();}
+function delItem(id){const l=S.lists.find(x=>x.id===curList);l.items=l.items.filter(x=>x.id!==id);save();renderItems();}
+
+// ── LIENS ──────────────────────────────────────────
+function openLk(){document.getElementById('lkUrl').value='';document.getElementById('lkTitle').value='';document.getElementById('lkModal').classList.add('open');setTimeout(()=>document.getElementById('lkUrl').focus(),360);}
+function closeLk(){document.getElementById('lkModal').classList.remove('open');}
+function addLink(){let url=document.getElementById('lkUrl').value.trim();const title=document.getElementById('lkTitle').value.trim();if(!url){toast('Saisis une URL');return;}if(!url.startsWith('http'))url='https://'+url;try{const domain=new URL(url).hostname.replace('www.','');S.links.unshift({id:Date.now(),url,title:title||domain,domain});save();closeLk();renderLinks();toast('🔗 Lien sauvegardé !');}catch(e){toast('URL invalide');}}
+function renderLinks(){const l=document.getElementById('linkList');if(!S.links.length){l.innerHTML='<div class="empty"><div class="ico">🔗</div><p>Sauvegarde tes liens préférés.</p></div>';return;}l.innerHTML=S.links.map(lk=>`<a class="lkcard" href="${lk.url}" target="_blank"><div class="fav"><img src="https://www.google.com/s2/favicons?domain=${lk.domain}&sz=64" onerror="this.parentNode.textContent='🌐'"></div><div class="lkinfo"><div class="lktitle">${lk.title}</div><div class="lkurl">${lk.domain}</div></div><button class="lk-del" onclick="event.preventDefault();delLink(${lk.id})">×</button></a>`).join('');}
+function delLink(id){S.links=S.links.filter(x=>x.id!==id);save();renderLinks();}
+
+// ── INIT ───────────────────────────────────────────
+renderMsgs(); renderReminders(); renderLists(); renderLinks();
+</script>
+</body>
+</html>
