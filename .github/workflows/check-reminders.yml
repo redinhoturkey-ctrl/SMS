@@ -2,15 +2,20 @@ name: Check Reminders & Send SMS
 
 on:
   schedule:
-    # Toutes les minutes (minimum GitHub Actions)
-    - cron: '* * * * *'
-  workflow_dispatch: # déclenchement manuel possible
+    - cron: '* * * * *'   # toutes les minutes
+  workflow_dispatch:       # déclenchement manuel depuis l'onglet Actions
+  push:
+    paths:
+      - 'reminders.json'  # se déclenche aussi quand un rappel est ajouté
 
 jobs:
   check:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # nécessaire pour modifier reminders.json
+      contents: write
+
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # supprime l'avertissement Node.js
 
     steps:
       - name: Checkout repo
@@ -20,6 +25,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Afficher reminders.json (debug)
+        run: cat reminders.json
 
       - name: Check reminders and send SMS
         env:
@@ -32,6 +40,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add reminders.json
-          # Ne commit que si le fichier a changé
           git diff --staged --quiet || git commit -m "chore: mark reminders as sent"
           git push
