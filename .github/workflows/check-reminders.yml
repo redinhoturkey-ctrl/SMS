@@ -1,1 +1,37 @@
+name: Check Reminders & Send SMS
 
+on:
+  schedule:
+    # Toutes les minutes (minimum GitHub Actions)
+    - cron: '* * * * *'
+  workflow_dispatch: # déclenchement manuel possible
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # nécessaire pour modifier reminders.json
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check reminders and send SMS
+        env:
+          SMS_USER: ${{ secrets.SMS_USER }}
+          SMS_PASS: ${{ secrets.SMS_PASS }}
+        run: node send-sms.js
+
+      - name: Commit updated reminders.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reminders.json
+          # Ne commit que si le fichier a changé
+          git diff --staged --quiet || git commit -m "chore: mark reminders as sent"
+          git push
