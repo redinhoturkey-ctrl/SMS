@@ -1,6 +1,6 @@
 {
-  "name": "Moi",
-  "short_name": "Moi",
+  "name": "SMSMe",
+  "short_name": "SMSMe",
   "description": "Mon espace personnel — Chat, Rappels, Listes, Liens",
   "start_url": "/SMS/",
   "scope": "/SMS/",
