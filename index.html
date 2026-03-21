@@ -157,10 +157,12 @@ html,body{height:100%;width:100%;font-family:var(--font-body);background:var(--b
 .r-card{background:var(--surface);border-radius:var(--r);padding:14px 14px 14px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;box-shadow:var(--shadow-sm);border-left:3px solid var(--orange);transition:opacity .28s;}
 .r-card.done{opacity:.4;border-left-color:var(--text3);}
 .r-card.done .r-title{text-decoration:line-through;color:var(--text2);}
+.r-card.sent{border-left-color:var(--green);opacity:.8;}
 .r-ring{width:22px;height:22px;border-radius:50%;flex-shrink:0;margin-top:2px;border:2px solid var(--orange);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
 .r-card.done .r-ring{background:var(--orange);border-color:var(--orange);}
+.r-card.sent .r-ring{background:var(--green);border-color:var(--green);}
 .r-tick{display:none;}
-.r-card.done .r-tick{display:block;}
+.r-card.done .r-tick,.r-card.sent .r-tick{display:block;}
 .r-body{flex:1;}
 .r-title{font-size:15px;font-weight:600;font-family:var(--font);}
 .r-time{font-size:12px;color:var(--orange);margin-top:3px;}
@@ -171,6 +173,23 @@ html,body{height:100%;width:100%;font-family:var(--font-body);background:var(--b
 .sms-gh{color:var(--accent);}
 .del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:22px;line-height:1;}
 .del-btn:active{color:var(--red);}
+
+/* Bouton historique */
+.history-toggle{
+  display:flex;align-items:center;gap:8px;
+  margin:4px 16px 0;padding:11px 14px;
+  background:var(--surface);border-radius:12px;
+  border:none;cursor:pointer;width:calc(100% - 32px);
+  font-family:var(--font);font-size:14px;font-weight:600;color:var(--text2);
+  box-shadow:var(--shadow-sm);
+}
+.history-toggle:active{background:var(--surface2);}
+.history-toggle svg{fill:var(--text3);width:17px;height:17px;flex-shrink:0;}
+.history-toggle .hcount{margin-left:auto;background:var(--surface2);border-radius:10px;padding:2px 8px;font-size:12px;}
+.history-toggle .harrow{transition:transform .25s;font-size:13px;margin-left:2px;}
+.history-toggle.open .harrow{transform:rotate(180deg);}
+.history-section{overflow:hidden;max-height:0;transition:max-height .35s ease;}
+.history-section.open{max-height:4000px;}
 
 /* ══ LISTES — pleine largeur ══ */
 .llist{display:flex;flex-direction:column;gap:12px;padding-bottom:16px;}
@@ -771,23 +790,75 @@ async function addReminder(){
   }
   catch(e){toast('⚠️ Sauvegardé en local seulement');}
 }
+let showHistory = false;
+function toggleHistory(){
+  showHistory=!showHistory;
+  document.getElementById('historyToggleBtn').classList.toggle('open',showHistory);
+  document.getElementById('historySection').classList.toggle('open',showHistory);
+}
+
 function renderReminders(){
   if(!S.reminders)S.reminders=[];
   const q=(document.getElementById('rSearch')||{value:''}).value.toLowerCase();
   const list=document.getElementById('rList'),sub=document.getElementById('rSub'),badge=document.getElementById('rBadge');
-  const active=S.reminders.filter(r=>!r.done);
-  sub.textContent=active.length?`${active.length} rappel${active.length>1?'s':''}`:'Aucun rappel';
-  const up=S.reminders.filter(r=>!r.done&&new Date(r.dt)>new Date()).length;
-  badge.style.display=up?'block':'none';badge.textContent=up;
-  let rem=[...S.reminders].sort((a,b)=>new Date(a.dt)-new Date(b.dt));
-  if(q)rem=rem.filter(r=>r.title.toLowerCase().includes(q));
-  if(!rem.length){list.innerHTML=q?'<div class="empty"><div class="ico">🔍</div><p>Aucun rappel trouvé</p></div>':'<div class="empty"><div class="ico">🔔</div><p>Aucun rappel.<br>Appuie sur + pour en créer un.</p></div>';return;}
-  list.innerHTML=rem.map(r=>{
-    const d=new Date(r.dt),past=d<new Date()&&!r.done;
+
+  // Séparer : actifs (pas encore envoyés) vs historique (smsSent=true)
+  let active  = S.reminders.filter(r=>!r.smsSent);
+  let history = S.reminders.filter(r=>r.smsSent);
+  if(q){ active=active.filter(r=>r.title.toLowerCase().includes(q)); history=history.filter(r=>r.title.toLowerCase().includes(q)); }
+
+  const up = active.filter(r=>!r.done&&new Date(r.dt)>new Date()).length;
+  sub.textContent = active.length ? `${active.length} rappel${active.length>1?'s':''}` : 'Aucun rappel en attente';
+  badge.style.display=up?'block':'none'; badge.textContent=up;
+
+  function cardHtml(r){
+    const d=new Date(r.dt), past=d<new Date()&&!r.done;
     const ds=d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const smsHtml=r.smsSent?`<div class="r-sms sms-ok">📱 SMS envoyé ✓</div>`:r.done?`<div class="r-sms sms-wait">—</div>`:`<div class="r-sms sms-gh">🤖 SMS automatique prévu</div>`;
-    return `<div class="r-card ${r.done?'done':''}"><div class="r-ring" onclick="toggleR(${r.id})"><svg class="r-tick" width="11" height="9" viewBox="0 0 11 9"><path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/></svg></div><div class="r-body"><div class="r-title">${r.title}</div><div class="r-time ${past?'past':''}">⏰ ${ds}</div>${smsHtml}</div><button class="del-btn" onclick="delR(${r.id})">×</button></div>`;
-  }).join('');
+    const smsHtml=r.smsSent
+      ?`<div class="r-sms sms-ok">📱 SMS envoyé ✓</div>`
+      :r.done?`<div class="r-sms sms-wait">—</div>`
+      :`<div class="r-sms sms-gh">🤖 SMS automatique prévu</div>`;
+    const cls=r.smsSent?'sent':r.done?'done':'';
+    return `<div class="r-card ${cls}">
+      <div class="r-ring" onclick="toggleR(${r.id})">
+        <svg class="r-tick" width="11" height="9" viewBox="0 0 11 9"><path d="M1 4.5L4 7.5L10 1.5" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+      </div>
+      <div class="r-body">
+        <div class="r-title">${r.title}</div>
+        <div class="r-time ${past?'past':''}">⏰ ${ds}</div>
+        ${smsHtml}
+      </div>
+      <button class="del-btn" onclick="delR(${r.id})">×</button>
+    </div>`;
+  }
+
+  // Section rappels actifs
+  let html = '';
+  if(!active.length){
+    html += '<div class="empty"><div class="ico">🔔</div><p>Aucun rappel en attente.<br>Appuie sur + pour en créer un.</p></div>';
+  } else {
+    html += active.sort((a,b)=>new Date(a.dt)-new Date(b.dt)).map(cardHtml).join('');
+  }
+
+  // Bouton historique + section
+  if(history.length || !active.length){
+    html += `<button class="history-toggle ${showHistory?'open':''}" id="historyToggleBtn" onclick="toggleHistory()">
+      <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+      Historique
+      <span class="hcount">${history.length}</span>
+      <span class="harrow">▾</span>
+    </button>
+    <div class="history-section ${showHistory?'open':''}" id="historySection">
+      <div style="padding:12px 16px 0">
+        ${history.length
+          ? history.sort((a,b)=>new Date(b.dt)-new Date(a.dt)).map(cardHtml).join('')
+          : '<div class="empty" style="padding:30px 0"><div class="ico">📭</div><p>Aucun SMS envoyé pour l\'instant.</p></div>'
+        }
+      </div>
+    </div>`;
+  }
+
+  list.innerHTML = html;
 }
 async function toggleR(id){const r=S.reminders.find(x=>x.id===id);if(r)r.done=!r.done;save();renderReminders();try{await saveReminders();}catch(e){}}
 async function delR(id){S.reminders=S.reminders.filter(x=>x.id!==id);save();renderReminders();try{await saveReminders();}catch(e){}}
