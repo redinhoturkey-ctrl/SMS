@@ -4,6 +4,7 @@
     "title": "iPhone",
     "dt": "2026-03-21T07:16:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-03-21T07:16:19.917Z"
   }
 ]
