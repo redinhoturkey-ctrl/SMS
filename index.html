@@ -108,7 +108,11 @@ html,body{height:100%;width:100%;font-family:var(--font-body);background:var(--b
 .mrow.selected .msg-check svg{display:block;}
 .msg-check svg{display:none;fill:white;width:12px;height:12px;}
 
-.bubble{width:92%;padding:10px 15px;border-radius:22px;font-size:15px;line-height:1.5;word-break:break-word;font-family:var(--font-body);}
+.bubble{
+  width:92%; min-width:min(92%, 220px);
+  padding:10px 15px;border-radius:22px;font-size:15px;line-height:1.5;
+  word-break:break-word;white-space:pre-wrap;font-family:var(--font-body);
+}
 .mrow.out .bubble{background:var(--grad);color:#fff;border-bottom-right-radius:5px;box-shadow:0 4px 12px rgba(1,132,250,.3);}
 .bubble-img{width:92%;border-radius:18px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.15);}
 .bubble-img img{width:100%;display:block;max-height:260px;object-fit:cover;}
@@ -726,7 +730,11 @@ function sendMsg(){
   const i=document.getElementById('chatInput'),t=i.value.trim();if(!t)return;
   S.messages.push({id:Date.now(),text:t,ts:Date.now()});save();i.value='';i.style.height='auto';renderMsgs();
 }
-document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+document.getElementById('chatInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}
+  // Shift+Entrée = saut de ligne naturel (comportement par défaut du textarea)
+});
+document.getElementById('chatInput').placeholder='Écris… (Shift+Entrée = saut de ligne)';
 document.getElementById('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,88)+'px';});
 
 // Photo picker
@@ -749,7 +757,10 @@ function closeR(){document.getElementById('rModal').classList.remove('open');}
 async function addReminder(){
   const title=document.getElementById('rTitle').value.trim(),date=document.getElementById('rDate').value,time=document.getElementById('rTime').value;
   if(!title){toast('Ajoute un titre');return;}if(!date){toast('Choisis une date');return;}if(!time){toast('Choisis une heure');return;}
-  const r={id:Date.now(),title,dt:date+'T'+time,done:false,smsSent:false};
+  // Convertir en UTC pour éviter les décalages dans send-sms.js
+  const localDate = new Date(date+'T'+time);
+  const dtUTC = localDate.toISOString(); // ex: "2026-03-21T19:55:00.000Z"
+  const r={id:Date.now(),title,dt:dtUTC,done:false,smsSent:false};
   if(!S.reminders)S.reminders=[];
   S.reminders.push(r);save();closeR();renderReminders();toast('⏳ Sauvegarde…');
   try{
