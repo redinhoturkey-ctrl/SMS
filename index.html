@@ -811,7 +811,11 @@ function addList(){
   if(!name){toast('Donne un nom à la liste');return;}
   if(!S.lists)S.lists=[];
   S.lists.push({id:Date.now(),name,emoji:selE,color:selC,items:[]});
-  save();closeL();renderLists();toast('✅ Liste créée !');
+  save();closeL();
+  // Ferme le détail si ouvert, puis re-render
+  document.getElementById('listDetail').classList.remove('open');
+  curList=null;
+  renderLists();toast('✅ Liste créée !');
 }
 
 function renderLists(){
@@ -892,16 +896,18 @@ function normalizeUrl(raw){
 }
 
 function addLink(){
-  const raw=document.getElementById('lkUrl').value;
+  let raw=document.getElementById('lkUrl').value.trim();
   const title=document.getElementById('lkTitle').value.trim();
-  const url=normalizeUrl(raw);
-  if(!url){toast('URL invalide — ex: google.com ou https://google.com');return;}
-  try{
-    const domain=new URL(url).hostname.replace('www.','');
-    if(!S.links)S.links=[];
-    S.links.unshift({id:Date.now(),url,title:title||domain,domain});
-    save();closeLk();renderLinks();toast('🔗 Lien sauvegardé !');
-  }catch(e){toast('URL invalide');}
+  if(!raw){toast('Saisis quelque chose');return;}
+  // Tenter de construire une URL valide, sinon garder tel quel
+  let url=raw;
+  let domain='';
+  if(!/^https?:\/\//i.test(raw)) url='https://'+raw;
+  try{ domain=new URL(url).hostname.replace('www.',''); }
+  catch(e){ url=raw; domain=raw.split('/')[0]; }
+  if(!S.links)S.links=[];
+  S.links.unshift({id:Date.now(),url,title:title||domain||raw,domain});
+  save();closeLk();renderLinks();toast('🔗 Lien sauvegardé !');
 }
 
 function renderLinks(){
@@ -939,16 +945,17 @@ function openLkEdit(id){
 function closeLkEdit(){document.getElementById('lkEditModal').classList.remove('open');}
 function saveEditLink(){
   const id=Number(document.getElementById('lkEditId').value);
-  const raw=document.getElementById('lkEditUrl').value;
+  let raw=document.getElementById('lkEditUrl').value.trim();
   const title=document.getElementById('lkEditTitle').value.trim();
-  const url=normalizeUrl(raw);
-  if(!url){toast('URL invalide');return;}
-  try{
-    const domain=new URL(url).hostname.replace('www.','');
-    const lk=S.links.find(x=>x.id===id); if(!lk)return;
-    lk.url=url; lk.title=title||domain; lk.domain=domain;
-    save();closeLkEdit();renderLinks();toast('✅ Lien modifié !');
-  }catch(e){toast('URL invalide');}
+  if(!raw){toast('Saisis quelque chose');return;}
+  let url=raw;
+  let domain='';
+  if(!/^https?:\/\//i.test(raw)) url='https://'+raw;
+  try{ domain=new URL(url).hostname.replace('www.',''); }
+  catch(e){ url=raw; domain=raw.split('/')[0]; }
+  const lk=S.links.find(x=>x.id===id); if(!lk)return;
+  lk.url=url; lk.title=title||domain||raw; lk.domain=domain;
+  save();closeLkEdit();renderLinks();toast('✅ Lien modifié !');
 }
 
 // ── INIT ───────────────────────────────────
