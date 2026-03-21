@@ -842,6 +842,8 @@ function renderReminders(){
 
   // Bouton historique + section
   if(history.length || !active.length){
+    // Si recherche active et résultats dans l'historique → ouvrir automatiquement
+    if(q && history.length) showHistory=true;
     html += `<button class="history-toggle ${showHistory?'open':''}" id="historyToggleBtn" onclick="toggleHistory()">
       <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
       Historique
