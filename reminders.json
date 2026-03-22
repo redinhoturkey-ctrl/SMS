@@ -4,6 +4,7 @@
     "title": "Jeux de société",
     "dt": "2026-03-22T08:30:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-03-22T08:30:24.154Z"
   }
 ]
