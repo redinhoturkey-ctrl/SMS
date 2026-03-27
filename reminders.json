@@ -1,7 +1,7 @@
 [
   {
     "id": 1774119655548,
-    "title": "Jeux de sociÃÂ©tÃÂ©",
+    "title": "Jeux de sociÃÂÃÂ©tÃÂÃÂ©",
     "dt": "2026-03-22T08:30:00.000Z",
     "done": false,
     "smsSent": true,
@@ -9,7 +9,7 @@
   },
   {
     "id": 1774168263149,
-    "title": "Jeux de sociÃ©tÃ©s",
+    "title": "Jeux de sociÃÂ©tÃÂ©s",
     "dt": "2026-03-22T09:35:00.000Z",
     "done": false,
     "smsSent": true,
@@ -22,5 +22,12 @@
     "done": false,
     "smsSent": true,
     "smsSentAt": "2026-03-23T13:52:17.077Z"
+  },
+  {
+    "id": 1774588663047,
+    "title": "Pâte carbo",
+    "dt": "2026-03-27T12:55:00.000Z",
+    "done": false,
+    "smsSent": false
   }
 ]
