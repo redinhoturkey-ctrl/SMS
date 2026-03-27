@@ -28,6 +28,7 @@
     "title": "Pâte carbo",
     "dt": "2026-03-27T12:55:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-03-27T12:56:16.102Z"
   }
 ]
