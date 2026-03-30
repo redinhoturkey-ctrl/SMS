@@ -43,6 +43,7 @@
     "title": "Garder Andrew le 08",
     "dt": "2026-03-30T12:04:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-03-30T12:04:17.903Z"
   }
 ]
