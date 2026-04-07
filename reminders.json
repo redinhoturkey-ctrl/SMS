@@ -60,6 +60,7 @@
     "title": "Darty",
     "dt": "2026-04-07T09:00:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-04-07T09:00:37.474Z"
   }
 ]
