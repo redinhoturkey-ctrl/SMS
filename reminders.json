@@ -68,6 +68,7 @@
     "title": "Remettre charge 200%",
     "dt": "2026-04-16T07:17:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-04-16T07:18:15.304Z"
   }
 ]
