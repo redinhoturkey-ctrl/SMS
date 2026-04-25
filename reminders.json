@@ -76,6 +76,7 @@
     "title": "Commander barre de son",
     "dt": "2026-04-25T12:48:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-04-25T12:48:14.258Z"
   }
 ]
