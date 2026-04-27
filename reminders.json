@@ -84,6 +84,7 @@
     "title": "Commande dressing",
     "dt": "2026-04-27T11:54:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-04-27T11:54:18.020Z"
   }
 ]
