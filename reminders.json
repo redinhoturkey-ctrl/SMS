@@ -92,6 +92,7 @@
     "title": "Dressing Leroy melon",
     "dt": "2026-05-23T17:40:00.000Z",
     "done": false,
-    "smsSent": false
+    "smsSent": true,
+    "smsSentAt": "2026-05-23T17:40:27.649Z"
   }
 ]
